@@ -1,8 +1,8 @@
 #minhaz bin farukee 1503034 created:17/2/2020
 #update:23/3/2020
+#completely running on update: 25/03/2020
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
 from collections import Counter
 
 def mean(Arr,start,end,size):
@@ -23,16 +23,39 @@ def variance(Arr,start,end,size):
     mew=mean(Arr,start,end,size)
     sigma=(square/(size-1))-((size*mew**2)/(size-1))   
     return sigma
-#def packet_at(time,dataset):
+
+def DynamicThresolding(Arr,window_size):
+    N=0
+    #start=0
+    window_size=11
+    beta=1.5
+    end=len(Arr)
+    i=0
+    mew=[]
+    sigma=[]    
+    mew.append(mean(Arr,0,0+window_size,window_size))
+    sigma.append(variance(Arr,0,0+window_size,window_size))
+    threshold=(mew[0]+sigma[0])*beta
+    for i in range(1,end-window_size):
+        #print(mew[i-1])
+        mew.append(mean(Arr,i,i+window_size,window_size))
+        sigma.append(variance(Arr,i,i+window_size,window_size))
+        if mew[i]>2*(mew[i]):
+            beta+=0.5 
+        else:
+            beta-=0.5  
+            if beta<1:
+                beta=1
+        threshold=(mew[i]+sigma[i])*beta
+        
+        #threshold.append((mew[i]+sigma[i])*beta) 
+        if A1[i]>threshold:
+            N+=1    
+            break
+    return N
+
 dataset=pd.read_csv("test_data.csv")
 
-'''
-num_packet=dataset.No
-time=dataset.Time
-source=dataset.Source
-destination=dataset.Destination
-protocol=dataset.Protocol
-'''
 #converting to list
 i=0
 x=0
@@ -86,15 +109,16 @@ while current_time<=max_time:
 t=0
 usip=[]
 udip=[]
+A31=[]
+A32=[]
+A41=[]
+A42=[]
 uprotocol=[]
 for t in range(int(max_time)+1):    
     usip.append(len(Counter(source_ip[t]))-1)
     udip.append(len(Counter(destination_ip[t]))-1)
     uprotocol.append(len(Counter(protocol[t]))-1)          
 
-
-
-o=variance(A1,0,2,3)
 #normalization:
 max_x1=max(A1)    
 max_usip=max(usip)
@@ -106,38 +130,60 @@ for s in range(int(max_time)+1):
     udip[s]=udip[s]/max_udip
     uprotocol[s]=uprotocol[s]/max_protocol
 
-'''
+s=0
+for s in range(int(max_time)+1):
+    A31.append(usip[s]/udip[s])
+    A32.append(A1[s]/udip[s])
+    A41.append(usip[s]/uprotocol[s])
+    A42.append(A1[s]/uprotocol[s])     
+
 #plot:
+plt.title('No. of packet vs time:')
+plt.xlabel('time(s)')
+plt.ylabel('Number of packets')    
+plt.bar(test, A1, align='center', alpha=0.5)
+plt.show()
+
+plt.title('No. of unique IP vs time:')
+plt.xlabel('time(s)')
+plt.ylabel('Number of unipue source IP') 
 plt.bar(test, usip, align='center', alpha=0.5)
 plt.show()
+
+plt.title('No. of unique destination IP vs time:')
+plt.xlabel('time(s)')
+plt.ylabel('Number of unique destination IP') 
 plt.bar(test, udip, align='center', alpha=0.5)
 plt.show()
+
+plt.title('No. of Protocol vs time:')
+plt.xlabel('time(s)')
+plt.ylabel('Number of protocols') 
 plt.bar(test, uprotocol, align='center', alpha=0.5)  
 plt.show()
-'''      
-
-
-
-
-
+      
 #Dynamic thresolding:
-N1=0
-window_size=11
-beta=1.5
-end=len(A1)
-i=0
-mew=[]
-sigma=[]
-threshold=[]
-for i in range(end-window_size):
-    mew.append(mean(usip,i,i+window_size,window_size))
-    sigma.append(variance(usip,i,i+window_size,window_size))
-    
-    threshold.append((mew[i]+sigma[i])*beta) 
-    if A1[i]>threshold[i]:
-        N1+=1
-        
-        
+N1=DynamicThresolding(A1,11)
+N2=DynamicThresolding(usip,11)
+
+#DOS attack detection:
+N3DOS=DynamicThresolding(A31,11)        
+N4DOS=DynamicThresolding(A42,11)  
+#print(N3DOS,N4DOS)
+if N1>0 and N2>0 and N3DOS>0 and N4DOS>0:
+    print("ALERT!!! DOS ATTACK!!! ")
+else:
+    print("No Dos attack")
+
+#DDOS attack detection:
+N3DDOS=DynamicThresolding(A32,11)        
+N4DDOS=DynamicThresolding(A41,11)
+#print(N3DDOS,N4DDOS)
+if N1>0 and N2>0 and N3DDOS>0 and N4DDOS>0:
+    print("ALERT!!! DDOS ATTACK!!! ")
+else:
+    print("No DDos attack")
+     
         
         
     
